@@ -40,11 +40,12 @@ EOS
   opt :range, "Range of word lengths", :default => "3..5"
 end
 
-Trollop::die :number, "must be non-negative" if opts[:number] < 0
-Trollop::die :range, "range is invalid (format: #..#)" unless opts[:range] =~ /^\d+\.\.\d+$/
+# this is much less horrifying, in fact, I can do it before making checking.
+rng = opts[:range].split(/[^\d+]/)
+opts[:range] = Range.new(rng.first.to_i, rng.last.to_i)
 
-# this is mildly horrifying.
-opts[:range] = eval(opts[:range])
+Trollop::die :number, "must be non-negative" if opts[:number] < 0
+Trollop::die :range, "word length range minimum is one" unless opts[:range].min > 0
 
 if opts[:load]
   ARGV.each do |file|
