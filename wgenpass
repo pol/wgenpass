@@ -7,12 +7,12 @@ Bundler.require
 class Word
   include DataMapper::Resource
 
-  property :id,         Serial
-  property :word,       String, :required => true
-  property :length,     Integer, :default => lambda {|r, p| r.word.length }
   property :md5sum,     String, :key => true, 
+                                :unique_index => true,
                                 :length => 32, 
                                 :default => lambda { |r, p| Digest::MD5.hexdigest(r.word) }
+  property :word,       String, :required => true
+  property :length,     Integer, :default => lambda {|r, p| r.word.length }
 end
 
 opts = Trollop::options do
