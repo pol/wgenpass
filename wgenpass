@@ -1,0 +1,73 @@
+#!/usr/bin/env ruby
+
+require "rubygems"
+require "bundler/setup"
+
+
+DataMapper::Logger.new($stdout, :debug)
+DataMapper.setup(:default, 'sqlite:///wgenpasswords.db')
+
+class Word
+  include DataMapper::Resource
+
+  property :id,         Serial
+  property :word,       String, :required => true
+  property :length,     Integer, :default => lambda {|r, p| r.word.length }
+  property :md5sum,     String, :key => true, 
+                                :length => 32, 
+                                :default => lambda { |r, p| Digest::MD5.hexdigest(r.word.read) }
+end
+
+DataMapper.finalize
+DataMapper.auto_upgrade!
+
+opts = Trollop::options do
+  version "wpassgen 0.0.1 (c) 2011 Pol Llovet"
+  banner <<-EOS
+Generate a password from a database of words.
+
+Usage:
+       wgenpass --add <word>+
+       wgenpass --load <filename>+
+       wgenpass --clear
+       wgenpass [number of passwords] [range of word lengths]
+where [options] are:
+EOS
+  opt :load, "Load a file of words into the database"
+  opt :add, "Add words to the database"
+  opt :clear, "Clear the word database"
+  opt :number, "Number of passwords to generate", :type => Integer, :default => 6
+  opt :range, "Range of word lengths", :type => Range, :default => (3..5)
+end
+
+Trollop::die :number, "must be non-negative" if opts[:volume] < 0
+Trollop::die :range, "range is ridiculous" unless opts[:range] < 20 && opts[:range] > 1
+
+if opts[:load]
+  ARGV.each do |file|
+    begin
+      File.open(file, 'r') do |line|
+        line.split(' ').each do |word|
+          Word.create(:word => word)
+        end
+      end
+    rescue
+      puts "The file #{file} was not readable."
+    end
+  end
+elsif opts[:add]
+  ARGV.each do |word|
+    Word.create(:word => word)
+  end
+elsif opts[:clear]
+  DataMapper.auto_migrate!
+else
+  passwords = Word.all( :length.gte => opts[:range].min, 
+                        :length.lte => opts[:range].max,
+                        :limit => opts[:number], 
+                        :order => Random).map(&:word).join("\n")
+  puts passwords
+end
+  
+      
+
