@@ -56,12 +56,20 @@ Trollop::die :range, "word length range minimum is one" unless opts[:range].min 
 if opts[:load]
   ARGV.each do |file|
     begin
-      
+      lines = %x{wc -l #{file}}.split.first.to_i #oh well, not platform independent!
+      pbar = ProgressBar.new(file, lines)
       File.open(file, 'r').each_line do |line|
         line.split(' ').each do |word|
-          Word.create(:word => word.downcase)
+          begin
+            Word.create(:word => word.downcase)
+          rescue => e
+            # fail saves gracefully, why is DM throwing an Exception here?
+            DataMapper.logger << "SAVE FAILED: #{e}"
+          end
         end
+        pbar.inc
       end
+      pbar.finish
     rescue Exception => e
       puts "The file #{file} was not readable."
       puts e
