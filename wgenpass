@@ -4,9 +4,6 @@ require "rubygems"
 require "bundler"
 Bundler.require
 
-DataMapper::Logger.new($stdout, :debug)
-DataMapper.setup(:default, 'sqlite:///wgenpasswords.db')
-
 class Word
   include DataMapper::Resource
 
@@ -15,11 +12,8 @@ class Word
   property :length,     Integer, :default => lambda {|r, p| r.word.length }
   property :md5sum,     String, :key => true, 
                                 :length => 32, 
-                                :default => lambda { |r, p| Digest::MD5.hexdigest(r.word.read) }
+                                :default => lambda { |r, p| Digest::MD5.hexdigest(r.word) }
 end
-
-DataMapper.finalize
-DataMapper.auto_upgrade!
 
 opts = Trollop::options do
   version "wpassgen 0.0.1 (c) 2011 Pol Llovet"
@@ -27,18 +21,29 @@ opts = Trollop::options do
 Generate a password from a database of words.
 
 Usage:
+       wgenpass [options]
+
        wgenpass --add <word>+
        wgenpass --load <filename>+
-       wgenpass --clear
-       wgenpass [number of passwords] [range of word lengths]
+
 where [options] are:
 EOS
-  opt :load, "Load a file of words into the database"
+  opt :load, "Load a file or files of words into the database"
   opt :add, "Add words to the database"
   opt :clear, "Clear the word database"
-  opt :number, "Number of passwords to generate", :type => Integer, :default => 6
-  opt :range, "Range of word lengths", :default => "3..5"
+  opt :words, "Number of words per password",     :default => 4
+  opt :number, "Number of passwords to generate", :default => 6
+  opt :range, "Range of word lengths",            :default => "3..5"
+  opt :verbose, "Show verbose information"
 end
+
+if opts[:verbose]
+  DataMapper::Logger.new($stdout, :debug)
+end
+
+DataMapper.setup(:default, 'sqlite://./wgenpasswords.db')
+DataMapper.finalize
+DataMapper.auto_upgrade!
 
 # this is much less horrifying, in fact, I can do it before making checking.
 rng = opts[:range].split(/[^\d+]/)
@@ -50,13 +55,15 @@ Trollop::die :range, "word length range minimum is one" unless opts[:range].min 
 if opts[:load]
   ARGV.each do |file|
     begin
-      File.open(file, 'r') do |line|
+      
+      File.open(file, 'r').each_line do |line|
         line.split(' ').each do |word|
-          Word.create(:word => word)
+          Word.create(:word => word.downcase)
         end
       end
-    rescue
+    rescue Exception => e
       puts "The file #{file} was not readable."
+      puts e
     end
   end
 elsif opts[:add]
@@ -66,11 +73,14 @@ elsif opts[:add]
 elsif opts[:clear]
   DataMapper.auto_migrate!
 else
-  passwords = Word.all( :length.gte => opts[:range].min, 
-                        :length.lte => opts[:range].max,
-                        :limit => opts[:number], 
-                        :order => Random).map(&:word).join("\n")
-  puts passwords
+  wids = opts[:number].times.collect { rand(Word.count) } 
+  passwords = []
+  query = "SELECT `word` from words WHERE length BETWEEN %d AND %d ORDER BY RANDOM() LIMIT %d"
+  opts[:number].times do
+    q = query % [opts[:range].min, opts[:range].max, opts[:words]]
+    passwords << repository(:default).adapter.select(q)
+  end
+  puts passwords.map{|pass| pass.join(' ') }.join("\n")
 end
   
       
