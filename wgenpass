@@ -28,12 +28,13 @@ Usage:
 
 where [options] are:
 EOS
-  opt :load, "Load a file or files of words into the database"
-  opt :add, "Add words to the database"
-  opt :clear, "Clear the word database"
   opt :words, "Number of words per password",     :default => 4
   opt :number, "Number of passwords to generate", :default => 6
   opt :range, "Range of word lengths",            :default => "3..5"
+  opt :load, "Load a file or files of words into the database"
+  opt :add, "Add words to the database"
+  opt :clear, "Clear the word database"
+  opt :stats, "Show word database stats"
   opt :verbose, "Show verbose information"
 end
 
@@ -72,25 +73,27 @@ elsif opts[:add]
   end
 elsif opts[:clear]
   DataMapper.auto_migrate!
+elsif opts[:stats]
+  puts "Number of words in the database: %d" % [Word.count]
 else
   passwords = []
   # Raw SQL, N queries
-  # query = "SELECT `word` from words WHERE length BETWEEN %d AND %d ORDER BY RANDOM() LIMIT %d"
-  # opts[:number].times do
-  #   q = query % [opts[:range].min, opts[:range].max, opts[:words]]
-  #   passwords << repository(:default).adapter.select(q)
-  # end
+  query = "SELECT `word` from words WHERE length BETWEEN %d AND %d ORDER BY RANDOM() LIMIT %d"
+  opts[:number].times do
+    q = query % [opts[:range].min, opts[:range].max, opts[:words]]
+    passwords << repository(:default).adapter.select(q)
+  end
 
   # DataMapper, N*M queries
-  count = Word.all( :length.gte => opts[:range].min,
-                    :length.lte => opts[:range].max).count
-  opts[:number].times do
-    passwords << opts[:words].times.map do
-      Word.first( :length.gte => opts[:range].min,
-                  :length.lte => opts[:range].max,
-                  :offset => rand(count)).word
-    end
-  end
+  # count = Word.all( :length.gte => opts[:range].min,
+  #                   :length.lte => opts[:range].max).count
+  # opts[:number].times do
+  #   passwords << opts[:words].times.map do
+  #     Word.first( :length.gte => opts[:range].min,
+  #                 :length.lte => opts[:range].max,
+  #                 :offset => rand(count)).word
+  #   end
+  # end
   puts passwords.map{|pass| pass.join(' ') }.join("\n")
 end
   
