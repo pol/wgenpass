@@ -37,11 +37,14 @@ EOS
   opt :add, "Add words to the database"
   opt :clear, "Clear the word database"
   opt :number, "Number of passwords to generate", :type => Integer, :default => 6
-  opt :range, "Range of word lengths", :type => Range, :default => (3..5)
+  opt :range, "Range of word lengths", :default => "3..5"
 end
 
-Trollop::die :number, "must be non-negative" if opts[:volume] < 0
-Trollop::die :range, "range is ridiculous" unless opts[:range] < 20 && opts[:range] > 1
+Trollop::die :number, "must be non-negative" if opts[:number] < 0
+Trollop::die :range, "range is invalid (format: #..#)" unless opts[:range] =~ /^\d+\.\.\d+$/
+
+# this is mildly horrifying.
+opts[:range] = eval(opts[:range])
 
 if opts[:load]
   ARGV.each do |file|
