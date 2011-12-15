@@ -73,12 +73,23 @@ elsif opts[:add]
 elsif opts[:clear]
   DataMapper.auto_migrate!
 else
-  wids = opts[:number].times.collect { rand(Word.count) } 
   passwords = []
-  query = "SELECT `word` from words WHERE length BETWEEN %d AND %d ORDER BY RANDOM() LIMIT %d"
+  # Raw SQL, N queries
+  # query = "SELECT `word` from words WHERE length BETWEEN %d AND %d ORDER BY RANDOM() LIMIT %d"
+  # opts[:number].times do
+  #   q = query % [opts[:range].min, opts[:range].max, opts[:words]]
+  #   passwords << repository(:default).adapter.select(q)
+  # end
+
+  # DataMapper, N*M queries
+  count = Word.all( :length.gte => opts[:range].min,
+                    :length.lte => opts[:range].max).count
   opts[:number].times do
-    q = query % [opts[:range].min, opts[:range].max, opts[:words]]
-    passwords << repository(:default).adapter.select(q)
+    passwords << opts[:words].times.map do
+      Word.first( :length.gte => opts[:range].min,
+                  :length.lte => opts[:range].max,
+                  :offset => rand(count)).word
+    end
   end
   puts passwords.map{|pass| pass.join(' ') }.join("\n")
 end
