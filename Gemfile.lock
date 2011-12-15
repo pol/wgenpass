@@ -1,3 +1,9 @@
+GIT
+  remote: git://github.com/jfelchner/ruby-progressbar.git
+  revision: 57faefc9f6a7a6e4acc1b46b02b9985f7e2d497b
+  specs:
+    ruby-progressbar (0.0.10)
+
 GEM
   remote: http://rubygems.org/
   specs:
@@ -67,5 +73,6 @@ DEPENDENCIES
   data_mapper
   dm-sqlite-adapter
   do_sqlite3
+  ruby-progressbar!
   sqlite3
   trollop
