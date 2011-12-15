@@ -1,8 +1,8 @@
 #!/usr/bin/env ruby
 
 require "rubygems"
-require "bundler/setup"
-
+require "bundler"
+Bundler.require
 
 DataMapper::Logger.new($stdout, :debug)
 DataMapper.setup(:default, 'sqlite:///wgenpasswords.db')
