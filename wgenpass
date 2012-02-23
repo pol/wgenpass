@@ -77,7 +77,12 @@ if opts[:load]
   end
 elsif opts[:add]
   ARGV.each do |word|
-    Word.create(:word => word)
+    begin
+      Word.create(:word => word.downcase)
+    rescue => e
+      # fail saves gracefully, why is DM throwing an Exception here?
+      DataMapper.logger << "SAVE FAILED: #{e}"
+    end
   end
 elsif opts[:clear]
   DataMapper.auto_migrate!
